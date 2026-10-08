@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShopEase - Online Shopping</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#f5f6fa;color:#222}
+header{background:#111827;color:white;padding:16px 5%;display:flex;align-items:center;gap:20px;position:sticky;top:0;z-index:10}
+.logo{font-size:25px;font-weight:bold;color:#60a5fa;white-space:nowrap}
+.search{flex:1;display:flex}
+.search input{width:100%;padding:12px;border:0;border-radius:7px 0 0 7px;font-size:15px}
+.search button{padding:12px 18px;border:0;background:#2563eb;color:white;border-radius:0 7px 7px 0;cursor:pointer}
+.cart{background:#2563eb;border:0;color:white;padding:11px 16px;border-radius:7px;cursor:pointer;font-weight:bold}
+.hero{padding:55px 5%;background:linear-gradient(135deg,#dbeafe,#eff6ff);text-align:center}
+.hero h1{font-size:42px;margin-bottom:12px}
+.hero p{font-size:18px;color:#555;margin-bottom:20px}
+.hero button{padding:13px 24px;border:0;background:#2563eb;color:white;border-radius:7px;font-size:16px;cursor:pointer}
+.container{width:90%;max-width:1200px;margin:30px auto}
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:25px}
+.filters button{padding:9px 16px;border:1px solid #ddd;background:white;border-radius:20px;cursor:pointer}
+.filters button.active,.filters button:hover{background:#2563eb;color:white}
+.products{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:22px}
+.card{background:white;border-radius:12px;overflow:hidden;box-shadow:0 3px 12px #00000012;transition:.2s}
+.card:hover{transform:translateY(-4px)}
+.product-img{height:180px;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:75px}
+.info{padding:16px}
+.info h3{margin-bottom:8px}
+.category{font-size:12px;color:#777}
+.price{font-size:20px;font-weight:bold;margin:10px 0}
+.add{width:100%;padding:10px;border:0;background:#111827;color:white;border-radius:7px;cursor:pointer}
+.add:hover{background:#2563eb}
+.empty{text-align:center;padding:40px;color:#777}
+footer{margin-top:50px;background:#111827;color:white;text-align:center;padding:25px}
+.modal{display:none;position:fixed;inset:0;background:#0008;z-index:20}
+.modal-box{background:white;width:90%;max-width:500px;margin:70px auto;padding:25px;border-radius:12px;max-height:80vh;overflow:auto}
+.modal-header{display:flex;justify-content:space-between;margin-bottom:20px}
+.close{font-size:25px;cursor:pointer}
+.cart-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #eee}
+.qty button{border:0;padding:4px 9px;margin:0 3px;cursor:pointer}
+.total{font-size:21px;font-weight:bold;margin-top:20px}
+.checkout{width:100%;padding:13px;margin-top:15px;background:#16a34a;color:white;border:0;border-radius:7px;cursor:pointer}
+@media(max-width:650px){
+ header{flex-wrap:wrap}.search{order:3;flex-basis:100%}.hero h1{font-size:30px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🛍️ ShopEase</div>
+  <div class="search">
+    <input id="searchInput" type="text" placeholder="Search products...">
+    <button onclick="searchProducts()">Search</button>
+  </div>
+  <button class="cart" onclick="openCart()">🛒 Cart (<span id="cartCount">0</span>)</button>
+</header>
+
+<section class="hero">
+  <h1>Everything You Love, In One Place</h1>
+  <p>Discover great products at simple prices.</p>
+  <button onclick="document.getElementById('products').scrollIntoView({behavior:'smooth'})">Shop Now</button>
+</section>
+
+<main class="container">
+  <div class="filters">
+    <button class="active" onclick="filterProducts('All',this)">All</button>
+    <button onclick="filterProducts('Electronics',this)">Electronics</button>
+    <button onclick="filterProducts('Fashion',this)">Fashion</button>
+    <button onclick="filterProducts('Home',this)">Home</button>
+    <button onclick="filterProducts('Beauty',this)">Beauty</button>
+  </div>
+  <div id="products" class="products"></div>
+</main>
+
+<div id="cartModal" class="modal">
+  <div class="modal-box">
+    <div class="modal-header"><h2>Your Cart</h2><span class="close" onclick="closeCart()">×</span></div>
+    <div id="cartItems"></div>
+    <div class="total">Total: ₹<span id="cartTotal">0</span></div>
+    <button class="checkout" onclick="checkout()">Proceed to Checkout</button>
+  </div>
+</div>
+
+<footer>
+  <p>© 2026 ShopEase — Demo Online Shopping Website</p>
+</footer>
+
+<script>
+const products=[
+ {id:1,name:"Wireless Headphones",price:2499,category:"Electronics",icon:"🎧"},
+ {id:2,name:"Smart Watch",price:3299,category:"Electronics",icon:"⌚"},
+ {id:3,name:"Running Shoes",price:1999,category:"Fashion",icon:"👟"},
+ {id:4,name:"Cotton T-Shirt",price:799,category:"Fashion",icon:"👕"},
+ {id:5,name:"Coffee Maker",price:2799,category:"Home",icon:"☕"},
+ {id:6,name:"Desk Lamp",price:999,category:"Home",icon:"💡"},
+ {id:7,name:"Face Care Kit",price:1499,category:"Beauty",icon:"🧴"},
+ {id:8,name:"Perfume",price:1899,category:"Beauty",icon:"🌸"}
+];
+
+let cart=JSON.parse(localStorage.getItem("shopEaseCart")||"[]");
+let currentCategory="All";
+
+function renderProducts(list=products){
+ const box=document.getElementById("products");
+ if(!list.length){box.innerHTML='<div class="empty">No products found.</div>';return}
+ box.innerHTML=list.map(p=>`
+ <div class="card">
+   <div class="product-img">${p.icon}</div>
+   <div class="info">
+     <div class="category">${p.category}</div>
+     <h3>${p.name}</h3>
+     <div class="price">₹${p.price.toLocaleString("en-IN")}</div>
+     <button class="add" onclick="addToCart(${p.id})">Add to Cart</button>
+   </div>
+ </div>`).join("");
+}
+
+function filterProducts(category,btn){
+ currentCategory=category;
+ document.querySelectorAll(".filters button").forEach(b=>b.classList.remove("active"));
+ btn.classList.add("active");
+ applyFilters();
+}
+
+function searchProducts(){applyFilters()}
+document.getElementById("searchInput").addEventListener("input",applyFilters);
+
+function applyFilters(){
+ const term=document.getElementById("searchInput").value.toLowerCase();
+ const list=products.filter(p=>
+  (currentCategory==="All"||p.category===currentCategory) &&
+  p.name.toLowerCase().includes(term)
+ );
+ renderProducts(list);
+}
+
+function addToCart(id){
+ const item=cart.find(x=>x.id===id);
+ if(item)item.qty++;
+ else cart.push({id,qty:1});
+ saveCart();
+ alert("Product added to cart!");
+}
+
+function saveCart(){
+ localStorage.setItem("shopEaseCart",JSON.stringify(cart));
+ updateCartCount();
+ renderCart();
+}
+
+function updateCartCount(){
+ document.getElementById("cartCount").textContent=cart.reduce((s,x)=>s+x.qty,0);
+}
+
+function renderCart(){
+ const box=document.getElementById("cartItems");
+ if(!cart.length){box.innerHTML='<p class="empty">Your cart is empty.</p>';document.getElementById("cartTotal").textContent="0";return}
+ let total=0;
+ box.innerHTML=cart.map(item=>{
+   const p=products.find(x=>x.id===item.id);
+   total+=p.price*item.qty;
+   return `<div class="cart-item">
+     <div><b>${p.icon} ${p.name}</b><br>₹${p.price.toLocaleString("en-IN")} × ${item.qty}</div>
+     <div class="qty">
+       <button onclick="changeQty(${p.id},-1)">−</button>
+       <span>${item.qty}</span>
+       <button onclick="changeQty(${p.id},1)">+</button>
+     </div>
+   </div>`;
+ }).join("");
+ document.getElementById("cartTotal").textContent=total.toLocaleString("en-IN");
+}
+
+function changeQty(id,change){
+ const item=cart.find(x=>x.id===id);
+ if(!item)return;
+ item.qty+=change;
+ if(item.qty<=0)cart=cart.filter(x=>x.id!==id);
+ saveCart();
+}
+
+function openCart(){document.getElementById("cartModal").style.display="block";renderCart()}
+function closeCart(){document.getElementById("cartModal").style.display="none"}
+window.onclick=e=>{if(e.target===document.getElementById("cartModal"))closeCart()}
+
+function checkout(){
+ if(!cart.length){alert("Your cart is empty.");return}
+ alert("Checkout demo! In a real website, this would open payment and address details.");
+}
+
+renderProducts();
+updateCartCount();
+renderCart();
+</script>
+</body>
+</html>
